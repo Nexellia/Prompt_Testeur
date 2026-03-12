@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coach Prompt ROCL — Nexellia</title>
+  <meta name="description" content="Améliore tes prompts IA avec le framework ROCL : Rôle, Objectif, Contexte, Limites.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ═══ 1. VARIABLES ═══ */
+    :root {
+      --primary:    #3E5641;
+      --secondary:  #5B753C;
+      --accent:     #906300;
+      --text:       #2C3E2D;
+      --bg:         #FDFEF9;
+      --bg-soft:    #F0F2EB;
+      --decoration: #D4E7C5;
+      --danger:     #B03A2E;
+      --radius-lg:  20px;
+      --radius-md:  12px;
+      --radius-sm:  8px;
+      --shadow-sm:  0 2px 8px rgba(62,86,65,.07);
+      --shadow-md:  0 6px 20px rgba(62,86,65,.13);
+      --transition: all .22s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ═══ 2. RESET ═══ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; line-height: 1.3; }
+    button { cursor: pointer; font-family: inherit; }
+    a { color: var(--primary); text-decoration: underline; cursor: pointer; }
+
+    /* ═══ 3. LAYOUT HEADER ═══ */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--primary);
+      color: #FDFEF9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .75rem 1.5rem;
+      min-height: 52px;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-family: 'Poppins', sans-serif;
+    }
+    .brand-name { font-weight: 700; font-size: 1rem; }
+    .brand-sep  { opacity: .4; }
+    .brand-title { font-weight: 500; font-size: .95rem; opacity: .9; }
+    .session-progress {
+      display: none;
+      align-items: center;
+      gap: .6rem;
+      font-size: .8rem;
+      opacity: .9;
+    }
+    .session-progress.visible { display: flex; }
+    .session-label { opacity: .7; }
+    .session-dots { display: flex; gap: .3rem; }
+    .session-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.3);
+    }
+    .session-dot.good { background: #D4E7C5; }
+    .session-dot.mid  { background: #F5C842; }
+    .session-dot.low  { background: rgba(255,255,255,.4); }
+    .session-best { font-weight: 600; }
+
+    .progress-bar-outer {
+      height: 3px;
+      background: var(--decoration);
+      position: sticky;
+      top: 52px;
+      z-index: 99;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--secondary);
+      transition: width .5s ease;
+      width: 0%;
+    }
+
+    /* ═══ 4. MAIN ═══ */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ═══ 5. SCREENS ═══ */
+    .screen { display: none; }
+    .screen.active { display: block; animation: screenEnter .25s ease both; }
+    @keyframes screenEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .screen-header { margin-bottom: 1.75rem; }
+    .screen-header h1 { font-size: 1.6rem; color: var(--primary); margin-bottom: .4rem; }
+    .screen-header p  { color: #5a6e5c; font-size: .95rem; }
+
+    /* ═══ 6. SHARED COMPONENTS ═══ */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--primary);
+      color: #FDFEF9;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: .75rem 1.5rem;
+      font-size: .95rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      transition: var(--transition);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-md);
+      padding: .7rem 1.25rem;
+      font-size: .9rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+    .btn-secondary:hover {
+      border-color: var(--primary);
+      background: var(--bg-soft);
+    }
+
+    .btn-ghost {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: .875rem;
+      text-decoration: underline;
+      padding: .25rem;
+      opacity: .75;
+    }
+    .btn-ghost:hover { opacity: 1; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      background: var(--bg-soft);
+      border: 1px solid var(--decoration);
+      border-radius: 30px;
+      padding: .3rem .8rem;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--primary);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text);
+      color: #FDFEF9;
+      padding: .7rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: .875rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .session-banner {
+      background: var(--bg-soft);
+      border: 1px solid var(--decoration);
+      border-radius: var(--radius-md);
+      padding: .75rem 1rem;
+      font-size: .875rem;
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .session-banner.visible { display: flex; align-items: center; gap: .75rem; }
+    .session-banner strong { font-weight: 600; }
+
+    /* ═══ 7. SC-CONTEXT ═══ */
+    .context-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .context-card {
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: var(--transition);
+      background: var(--bg);
+    }
+    .context-card:hover {
+      border-color: var(--secondary);
+      background: var(--bg-soft);
+      box-shadow: var(--shadow-sm);
+    }
+    .context-card.selected {
+      border-color: var(--primary);
+      background: var(--bg-soft);
+      box-shadow: var(--shadow-sm);
+    }
+    .context-card-icon { font-size: 1.6rem; margin-bottom: .5rem; }
+    .context-card-label {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: .95rem;
+      color: var(--primary);
+      margin-bottom: .25rem;
+    }
+    .context-card-desc { font-size: .8rem; color: #5a6e5c; line-height: 1.4; }
+
+    /* ═══ 8. SC-INPUT ═══ */
+    .context-hint {
+      border-left: 3px solid var(--accent);
+      background: var(--bg-soft);
+      padding: .75rem 1rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: .875rem;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+    .context-hint strong { color: var(--accent); }
+
+    .textarea-wrap { position: relative; margin-bottom: .5rem; }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 1rem;
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-md);
+      font-family: 'Inter', sans-serif;
+      font-size: .95rem;
+      color: var(--text);
+      background: var(--bg);
+      resize: vertical;
+      transition: border-color .2s;
+      line-height: 1.6;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .word-counter {
+      text-align: right;
+      font-size: .75rem;
+      color: #9aab8d;
+      margin-bottom: 1rem;
+    }
+    .input-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+    /* ═══ 9. SC-FEEDBACK ═══ */
+    .score-zone {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      margin-bottom: 1.5rem;
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-lg);
+      background: var(--bg-soft);
+    }
+    .score-number {
+      font-family: 'Poppins', sans-serif;
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .score-denom { font-size: 1.5rem; font-weight: 400; opacity: .5; }
+    .score-level {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .25rem .75rem;
+      border-radius: 20px;
+      margin-top: .5rem;
+      background: var(--decoration);
+      color: var(--primary);
+    }
+    .score-delta {
+      margin-top: .6rem;
+      font-size: .875rem;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+    .score-delta.neg { color: var(--accent); }
+
+    .dim-bars { margin-bottom: 1.5rem; }
+    .dim-bars-title {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #5a6e5c;
+      margin-bottom: .75rem;
+    }
+    .dim-bar-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: .5rem;
+      padding: .4rem .6rem;
+      border-radius: var(--radius-sm);
+      transition: background .15s;
+    }
+    .dim-bar-row.focus-row {
+      background: var(--bg-soft);
+      border: 1px solid var(--decoration);
+    }
+    .dim-bar-icon { font-size: 1rem; width: 1.25rem; text-align: center; flex-shrink: 0; }
+    .dim-bar-label { font-size: .8rem; font-weight: 500; width: 130px; flex-shrink: 0; }
+    .dim-bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--decoration);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .dim-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--primary);
+      transition: width .5s ease;
+    }
+    .dim-bar-fill.low  { background: var(--danger); }
+    .dim-bar-fill.mid  { background: var(--accent); }
+    .dim-bar-fill.high { background: var(--secondary); }
+    .dim-bar-score { font-size: .8rem; font-weight: 600; width: 40px; text-align: right; color: var(--primary); flex-shrink: 0; }
+
+    /* Feedback Block */
+    .feedback-block {
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .fb-header {
+      background: var(--primary);
+      color: #FDFEF9;
+      padding: .9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .fb-header-icon { font-size: 1.1rem; }
+    .fb-header-label { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: .95rem; flex: 1; }
+    .fb-header-score { font-size: .85rem; opacity: .8; }
+    .fb-body { padding: 1.25rem; }
+    .fb-message { margin-bottom: 1rem; font-size: .9rem; line-height: 1.6; }
+    .fb-conseil {
+      background: var(--bg-soft);
+      border-left: 3px solid var(--accent);
+      padding: .75rem 1rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin-bottom: .75rem;
+      font-size: .875rem;
+    }
+    .fb-conseil-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: .25rem;
+    }
+    .fb-impact {
+      font-size: .82rem;
+      color: var(--accent);
+      font-style: italic;
+      margin-bottom: 1.25rem;
+      line-height: 1.5;
+    }
+
+    /* Examples accordion */
+    .examples-title {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #5a6e5c;
+      margin-bottom: .6rem;
+    }
+    .example-item {
+      border-top: 1px solid var(--decoration);
+    }
+    .example-item summary {
+      padding: .6rem 0;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      user-select: none;
+    }
+    .example-item summary::before {
+      content: '▶';
+      font-size: .6rem;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .example-item[open] summary::before { transform: rotate(90deg); }
+    .example-item summary:hover { color: var(--secondary); }
+    .example-avant {
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      padding: .6rem .8rem;
+      font-size: .82rem;
+      margin-top: .25rem;
+    }
+    .example-label-tag {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #7a8e7c;
+      margin-bottom: .2rem;
+    }
+    .example-apres {
+      background: var(--decoration);
+      padding: .6rem .8rem;
+      font-size: .82rem;
+    }
+    .example-delta {
+      font-size: .78rem;
+      color: var(--accent);
+      font-weight: 600;
+      padding: .5rem .8rem;
+      background: var(--bg);
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      border-top: 1px dashed var(--decoration);
+      margin-bottom: .5rem;
+    }
+    .example-delta::before { content: '→ '; }
+
+    /* Dim nav */
+    .dim-nav {
+      display: flex;
+      gap: .5rem;
+      justify-content: center;
+      margin: 1.25rem 0 1.5rem;
+      flex-wrap: wrap;
+    }
+    .dim-nav-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 2px solid var(--decoration);
+      background: var(--bg);
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+    .dim-nav-btn:hover { border-color: var(--primary); background: var(--bg-soft); }
+    .dim-nav-btn.active { border-color: var(--primary); background: var(--primary); color: #FDFEF9; }
+    .dim-nav-hint {
+      text-align: center;
+      font-size: .78rem;
+      color: #9aab8d;
+      margin-bottom: 1rem;
+    }
+
+    .feedback-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+    /* ═══ 10. SC-REWRITE ═══ */
+    .focus-reminder {
+      border-left: 4px solid var(--accent);
+      background: var(--bg-soft);
+      padding: 1rem 1.25rem;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      margin-bottom: 1.5rem;
+    }
+    .focus-reminder-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: .3rem;
+    }
+    .focus-reminder-text { font-size: .875rem; color: var(--text); }
+
+    .original-prompt-block {
+      margin-bottom: 1.25rem;
+    }
+    .block-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #7a8e7c;
+      margin-bottom: .4rem;
+    }
+    .original-prompt-text {
+      background: var(--bg-soft);
+      border: 1px solid var(--decoration);
+      border-radius: var(--radius-md);
+      padding: .9rem 1rem;
+      font-size: .875rem;
+      color: var(--text);
+      opacity: .75;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .live-badges {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      margin-bottom: .75rem;
+    }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .2rem .55rem;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+      border: 1.5px solid var(--decoration);
+      background: var(--bg);
+      color: #7a8e7c;
+      transition: var(--transition);
+    }
+    .live-badge.improved {
+      border-color: var(--secondary);
+      background: var(--decoration);
+      color: var(--primary);
+    }
+
+    .rewrite-actions { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+
+    /* ═══ 11. SC-COMPARE ═══ */
+    .compare-delta-zone {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      padding: 1.25rem 1rem;
+      background: var(--bg-soft);
+      border-radius: var(--radius-lg);
+      border: 1.5px solid var(--decoration);
+    }
+    .compare-delta-num {
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .compare-delta-num.neg { color: var(--accent); }
+    .compare-delta-msg { font-size: .9rem; color: #5a6e5c; margin-top: .4rem; }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .compare-card {
+      border: 1.5px solid var(--decoration);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+    }
+    .compare-card.improved { border-color: var(--secondary); }
+    .compare-card-title {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: .85rem;
+      color: #5a6e5c;
+      margin-bottom: .5rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .compare-card.improved .compare-card-title { color: var(--secondary); }
+    .compare-total-score {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: .75rem;
+    }
+    .compare-dim-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .3rem 0;
+      font-size: .82rem;
+      border-top: 1px solid var(--decoration);
+    }
+    .compare-dim-icon-label { display: flex; align-items: center; gap: .35rem; color: var(--text); }
+    .compare-dim-score { font-weight: 600; color: var(--primary); }
+    .compare-dim-score.up   { color: var(--secondary); }
+    .compare-dim-score.down { color: var(--danger); }
+    .compare-dim-score.same { color: #9aab8d; }
+
+    .compare-actions {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ═══ 12. RESPONSIVE ═══ */
+    @media (max-width: 768px) {
+      .context-grid { grid-template-columns: 1fr; }
+      .compare-grid { grid-template-columns: 1fr; }
+      main { padding: 1.5rem 1rem 3rem; }
+      .score-number { font-size: 3rem; }
+      .compare-delta-num { font-size: 2.2rem; }
+    }
+    @media (max-width: 480px) {
+      .dim-bar-label { width: 90px; font-size: .75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-name">Nexellia</span>
+      <span class="brand-sep">|</span>
+      <span class="brand-title">Coach Prompt — ROCL</span>
+    </div>
+    <div class="session-progress" id="sessionProgress">
+      <span class="session-label">Session</span>
+      <div class="session-dots" id="sessionDots"></div>
+      <span class="session-best" id="sessionBest"></span>
+    </div>
+  </header>
+  <div class="progress-bar-outer">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+
+  <main>
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ══ ÉCRAN 1 — CONTEXTE ══ -->
+    <section class="screen" id="sc-context">
+      <div id="sessionBanner" class="session-banner">
+        <span>🔄</span>
+        <span id="sessionBannerText">Session en cours</span>
+      </div>
+      <div class="screen-header">
+        <h1>Quel type de tâche vas-tu demander à l'IA ?</h1>
+        <p>Le type de tâche conditionne les critères d'évaluation de ton prompt.</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem;">
+          <span class="pill">👤 R — Rôle</span>
+          <span class="pill">🎯 O — Objectif</span>
+          <span class="pill">🗂️ C — Contexte</span>
+          <span class="pill">🔒 L — Limites</span>
+        </div>
+      </div>
+      <div class="context-grid" id="contextGrid"></div>
+      <button class="btn-primary" id="btnToInput" disabled>
+        Continuer →
+      </button>
+    </section>
+
+    <!-- ══ ÉCRAN 2 — SAISIE ══ -->
+    <section class="screen" id="sc-input">
+      <div class="screen-header">
+        <div style="margin-bottom:.6rem" id="contextPillInput"></div>
+        <h1>Saisis ton prompt</h1>
+        <p>Écris le prompt tel que tu l'écrirais vraiment à l'IA.</p>
+      </div>
+      <div class="context-hint" id="contextHint"></div>
+      <div class="textarea-wrap">
+        <textarea id="promptInput" placeholder="Écris ton prompt ici…"></textarea>
+      </div>
+      <div class="word-counter"><span id="wordCount">0</span> mot(s)</div>
+      <div class="input-actions">
+        <button class="btn-primary" id="btnAnalyze" disabled>Analyser mon prompt</button>
+        <button class="btn-ghost" id="btnBackContext">← Changer de contexte</button>
+      </div>
+    </section>
+
+    <!-- ══ ÉCRAN 3 — FEEDBACK ══ -->
+    <section class="screen" id="sc-feedback">
+      <div class="screen-header">
+        <div style="margin-bottom:.6rem" id="contextPillFeedback"></div>
+        <h1>Analyse de ton prompt</h1>
+      </div>
+
+      <!-- Zone A : score global -->
+      <div class="score-zone">
+        <div class="score-number" id="scoreNum">--<span class="score-denom">/100</span></div>
+        <div class="score-level" id="scoreLevel">—</div>
+        <div class="score-delta" id="scoreDelta" style="display:none"></div>
+      </div>
+
+      <!-- Zone B : jauges -->
+      <div class="dim-bars">
+        <div class="dim-bars-title">Tes 4 dimensions ROCL</div>
+        <div id="dimBarsContainer"></div>
+      </div>
+
+      <!-- Zone C : feedback scaffolding -->
+      <div id="feedbackBlock"></div>
+
+      <!-- Nav dimensions -->
+      <div class="dim-nav-hint">Clique sur une dimension pour explorer son feedback</div>
+      <div class="dim-nav" id="dimNav"></div>
+
+      <!-- Zone D : actions -->
+      <div class="feedback-actions">
+        <button class="btn-primary" id="btnRewrite">✏️ Je réécris mon prompt maintenant</button>
+        <button class="btn-ghost" id="btnNewPrompt">Recommencer avec un nouveau prompt</button>
+      </div>
+    </section>
+
+    <!-- ══ ÉCRAN 4 — RÉÉCRITURE ══ -->
+    <section class="screen" id="sc-rewrite">
+      <div class="screen-header">
+        <h1>Réécris ton prompt</h1>
+        <p>Applique le conseil ci-dessous, puis analyse ta nouvelle version.</p>
+      </div>
+
+      <div class="focus-reminder" id="focusReminder">
+        <div class="focus-reminder-label">💡 Conseil prioritaire</div>
+        <div class="focus-reminder-text" id="focusReminderText"></div>
+      </div>
+
+      <div class="original-prompt-block">
+        <div class="block-label">Ton prompt original</div>
+        <div class="original-prompt-text" id="originalPromptDisplay"></div>
+      </div>
+
+      <div class="block-label" style="margin-bottom:.5rem">Ta version améliorée</div>
+      <div class="live-badges" id="liveBadges"></div>
+      <div class="textarea-wrap">
+        <textarea id="rewriteInput" placeholder="Réécris ton prompt amélioré ici…"></textarea>
+      </div>
+      <div class="word-counter"><span id="wordCountV2">0</span> mot(s)</div>
+
+      <div class="rewrite-actions">
+        <button class="btn-primary" id="btnAnalyzeV2" disabled>Analyser ma nouvelle version</button>
+        <button class="btn-ghost" id="btnBackFeedback">← Revoir l'analyse</button>
+      </div>
+    </section>
+
+    <!-- ══ ÉCRAN 5 — COMPARAISON ══ -->
+    <section class="screen" id="sc-compare">
+      <div class="screen-header">
+        <h1>Comparaison de tes deux versions</h1>
+      </div>
+
+      <div class="compare-delta-zone">
+        <div class="compare-delta-num" id="compareDeltaNum">--</div>
+        <div class="compare-delta-msg" id="compareDeltaMsg"></div>
+      </div>
+
+      <div class="compare-grid" id="compareGrid"></div>
+
+      <div class="compare-actions">
+        <button class="btn-primary" id="btnImproveAgain">✏️ Améliorer encore</button>
+        <button class="btn-secondary" id="btnNewContext">Changer de contexte</button>
+        <button class="btn-secondary" id="btnNewPromptSameCtx">Nouveau prompt</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function PromptCoachApp() {
+    'use strict';
+
+    /* ═══════════════════════════════════════════════
+       DATA — Base de règles (Knowledge Base 2026)
+    ═══════════════════════════════════════════════ */
+
+    // ── Framework ROCL : Rôle · Objectif · Contexte · Limites ──
+    const DIMENSIONS = [
+      {
+        id: 'd1', label: 'Rôle', icon: '👤',
+
+        detect(text) {
+          const strong = [
+            /tu es (un|une|le|la)\s+\w+/i,
+            // "agis comme", "agis en tant que/qu'", "agis en qualité de/d'"
+            /agis (comme|en tant qu[e']|en qualité d[e'])/i,
+            // "en tant que formateur" ou "en tant qu'expert" (apostrophe sans espace)
+            /en tant qu[e']\s*\w+/i,
+            /joue le rôle/i,
+            // "expert seo", "expert en SEO", "expert comptable", "expert en rédaction"
+            /expert(e)?\s+(en\s+)?\w+/i,
+            // "spécialiste SEO", "spécialiste de/en/du ..."
+            /spécialiste\s+(de |en |du |d'|des )?\w+/i,
+            // liste de métiers / rôles reconnus
+            /\b(formateur|formatrice|consultant|consultante|juriste|rh|directeur|directrice|coach|manager|analyste|chef de projet|ingénieur|comptable|avocat|psychologue|rédacteur|rédactrice|copywriter|seo|community manager|designer|développeur|développeuse|product manager|data analyst)\b/i
+          ];
+          const weak = [
+            /professionnel(lement)?/i,
+            /comme si tu savais/i,
+            /avec ton expertise/i,
+            /en mode expert/i,
+            /\bexpert\b/i  // "expert" seul, sans domaine précisé
+          ];
+          return {
+            strong: strong.filter(p => p.test(text)).length,
+            weak:   weak.filter(p => p.test(text)).length
+          };
+        },
+
+        score(text) {
+          const { strong, weak } = this.detect(text);
+          if (strong >= 2) return 25;
+          if (strong === 1) return 17;
+          if (weak >= 1)    return 8;
+          return 0;
+        },
+
+        feedback: {
+          low: {
+            message: "Aucun rôle n'est assigné. L'IA répond comme un généraliste anonyme — réponse correcte mais jamais experte.",
+            conseil: "Commence ton prompt par : « Tu es [rôle précis + domaine + niveau] ».",
+            impact: "Sans rôle : réponse de manuel scolaire. Avec rôle : réponse d'expert qui connaît ton terrain."
+          },
+          mid: {
+            message: "Un rôle est évoqué mais reste trop vague pour activer une posture experte.",
+            conseil: "Précise le domaine, le niveau d'expertise, et si possible le type d'organisation.",
+            impact: "« Expert » sans domaine = quasi nul. « Expert RH spécialisé en conflits en PME de 50+ personnes » = posture radicalement différente."
+          },
+          high: {
+            message: "Le rôle est précis : l'IA adopte un cadre cognitif expert ancré dans un domaine réel.",
+            conseil: "Tu peux renforcer encore en précisant l'audience : « …qui s'adresse à des non-techniciens ».",
+            impact: "Un rôle précis + domaine produit des réponses significativement plus spécialisées qu'un prompt sans rôle."
+          }
+        },
+
+        examples: [
+          {
+            label: "Email RH",
+            avant: "Écris un email pour refuser une demande de télétravail.",
+            apres: "Tu es responsable RH dans une PME industrielle de 120 personnes. Écris un email de refus pour une demande de télétravail permanent, en préservant la relation avec l'employé et en restant dans le cadre légal.",
+            delta: "L'IA passe d'un refus générique à un email calibré sur les contraintes légales et relationnelles RH — un juriste et un RH ne répondent pas pareil."
+          },
+          {
+            label: "Analyse commerciale",
+            avant: "Analyse ces chiffres de ventes.",
+            apres: "Tu es directeur commercial avec 10 ans d'expérience en B2B SaaS. Analyse ces données de ventes Q1 2025 et identifie les signaux d'alarme à présenter à un board de direction.",
+            delta: "La même analyse devient un rapport exécutif avec les KPIs pertinents pour un décideur, pas une description statistique de chaque colonne."
+          },
+          {
+            label: "Formation IA",
+            avant: "Explique-moi l'IA générative.",
+            apres: "Tu es formateur spécialisé en transformation digitale pour des profils non-techniques. Explique l'IA générative à un groupe de managers en 5 minutes, avec une seule analogie du quotidien, sans vocabulaire technique.",
+            delta: "Sans rôle : définition Wikipédia. Avec rôle formateur : structure pédagogique, métaphore accessible, exemples du quotidien professionnel."
+          }
+        ]
+      },
+
+      {
+        id: 'd2', label: 'Objectif', icon: '🎯',
+
+        detect(text) {
+          const actionVerbs = /\b(rédige|crée|génère|analyse|résume|compare|liste|identifie|explique|traduis|reformule|structure|planifie|évalue|produis|propose|formule|synthétise|écris|développe|construis|rédige|conçois|prépare|rédige|calcule|vérifie|valide|classe)\b/i;
+          const hasVerb = actionVerbs.test(text);
+
+          const quantifiers = [
+            /\b\d+\s*(points?|bullets?|lignes?|pages?|mots?|paragraphes?|étapes?|exemples?|questions?|slides?|sections?|critères?|options?)\b/i,
+            /maximum|minimum|au plus|au moins|exactement\s+\d/i,
+            /en\s+\d+\s*(phrases?|lignes?|mots?|points?)/i
+          ];
+          const quantCount = quantifiers.filter(p => p.test(text)).length;
+
+          const goalSignals = [
+            /l'objectif (est|sera) de/i,
+            /le résultat attendu/i,
+            /pour que (je|mon|l'|nous)/i,
+            /afin de\s+\w+/i,
+            /de façon à\s+\w+/i,
+            /permettre de\s+\w+/i
+          ];
+          const hasGoal = goalSignals.some(p => p.test(text));
+
+          const vague = /^(aide|dis-moi|parle-moi|peux-tu|tu peux|help|j'aimerais|je voudrais)\s/i.test(text.trim());
+
+          return { hasVerb, quantCount, hasGoal, vague };
+        },
+
+        score(text) {
+          const { hasVerb, quantCount, hasGoal, vague } = this.detect(text);
+          if (vague && !hasVerb) return Math.min(6, quantCount * 3);
+          let s = 0;
+          if (hasVerb)         s += 10;
+          if (quantCount >= 2) s += 10;
+          else if (quantCount) s += 5;
+          if (hasGoal)         s += 5;
+          return Math.min(25, s);
+        },
+
+        feedback: {
+          low: {
+            message: "L'objectif est absent ou trop vague. L'IA invente ce que tu veux — et se trompe souvent.",
+            conseil: "Commence par un verbe d'action précis : Rédige / Analyse / Compare / Identifie / Structure / Produis.",
+            impact: "« Aide-moi sur Excel » = tutoriel aléatoire. « Crée une formule XLOOKUP pour croiser ces deux tableaux » = exactement ce qu'il faut, dès la première réponse."
+          },
+          mid: {
+            message: "L'objectif est visible mais le livrable attendu reste imprécis — l'IA doit deviner sa forme.",
+            conseil: "Quantifie le livrable : combien de points ? Quel format ? Quelle longueur cible ?",
+            impact: "« Résume ce document » = 1 ou 10 paragraphes selon l'humeur. « Résume en 5 bullets de 20 mots max » = résultat invariable et utilisable."
+          },
+          high: {
+            message: "L'objectif est clair, actionné et quantifié : le livrable est défini sans ambiguïté.",
+            conseil: "Excellent. Ajoute un critère de succès (comment tu jugeras si c'est réussi) pour atteindre le niveau expert.",
+            impact: "Ce niveau de précision dans l'objectif est la caractéristique numéro 1 des prompts professionnels — il réduit les itérations de 70%."
+          }
+        },
+
+        examples: [
+          {
+            label: "Compte-rendu de réunion",
+            avant: "Résume cette réunion.",
+            apres: "Rédige un compte-rendu en 3 sections distinctes : 1) Décisions prises (bullets), 2) Actions à faire avec responsable et délai, 3) Points en suspens. Maximum 200 mots. Destinataire : direction générale, pas les participants.",
+            delta: "La structure imposée (3 sections nommées + 200 mots) produit un compte-rendu directement publiable, sans aucun reformatage."
+          },
+          {
+            label: "Contenu LinkedIn",
+            avant: "Écris quelque chose sur le télétravail.",
+            apres: "Rédige un post LinkedIn de 200 mots sur les 3 erreurs des managers en télétravail. Structure : accroche choc en 1 ligne, 3 bullets avec erreur + conséquence, conclusion avec question d'engagement. Objectif : générer des commentaires.",
+            delta: "Le post quantifié (200 mots, 3 bullets, structure imposée) est publiable tel quel — l'objectif « générer des commentaires » oriente même la conclusion."
+          },
+          {
+            label: "Diagnostic Excel",
+            avant: "Analyse ces données.",
+            apres: "Analyse ce tableau de ventes Q1-Q4 2024. Identifie précisément : (1) le produit à plus forte croissance trimestrielle, (2) les 2 régions sous-performantes vs objectif, (3) une anomalie statistique si elle existe. Produis 3 bullets avec les chiffres exacts.",
+            delta: "3 questions précises = 3 réponses ciblées avec chiffres. Sans structure : l'IA décrit toutes les colonnes dans l'ordre — inutilisable en réunion."
+          }
+        ]
+      },
+
+      {
+        id: 'd3', label: 'Contexte', icon: '🗂️',
+
+        detect(text) {
+          const patterns = [
+            /\b\d+\s*(personnes?|employés?|collaborateurs?|clients?|salariés?|participants?|apprenants?)\b/i,
+            /pme|grande entreprise|startup|cabinet|agence|organisation|association|collectivité/i,
+            /secteur|industrie|domaine|branche|filière/i,
+            /santé|finance|immobilier|tech|retail|industrie|éducation|rh|juridique|logistique|bâtiment|btp/i,
+            /depuis|actuellement|en ce moment|cette semaine|ce mois|en cours/i,
+            /suite à|après|à cause de|en réponse à|dans le cadre de/i,
+            /budget|\d+\s*(k€|€|euros?|%)|chiffre d'affaires|ca\s+\d/i,
+            /avec (microsoft|copilot|chatgpt|excel|word|powerpoint|sharepoint|teams|slack|notion)/i,
+            /notre (système|outil|plateforme|crm|erp|logiciel|processus|équipe)/i,
+            /\b(b2b|b2c|saas|retail|ecommerce|e-commerce)\b/i
+          ];
+          const count = patterns.filter(p => p.test(text)).length;
+          const words = text.trim().split(/\s+/).length;
+          return { count, lengthBonus: words > 45 ? 1 : 0 };
+        },
+
+        score(text) {
+          const { count, lengthBonus } = this.detect(text);
+          const total = count + lengthBonus;
+          if (total >= 4)  return 25;
+          if (total >= 2)  return 17;
+          if (total === 1) return 8;
+          return 0;
+        },
+
+        feedback: {
+          low: {
+            message: "Le contexte est absent. L'IA opère dans le vide absolu — elle comble les trous par des suppositions, souvent fausses.",
+            conseil: "Donne au minimum : qui tu es + dans quelle situation tu te trouves + quel est l'enjeu.",
+            impact: "Sans contexte = réponse copiée d'un livre. Avec contexte = réponse construite pour ta réalité spécifique."
+          },
+          mid: {
+            message: "Le contexte existe mais reste trop générique pour que l'IA calibre vraiment sa réponse.",
+            conseil: "Ajoute le secteur d'activité, la taille de l'organisation, le déclencheur de ta demande, ou une donnée chiffrée clé.",
+            impact: "« Mon entreprise » vs « PME industrielle de 80 personnes dans le bâtiment » — deux réponses radicalement différentes sur le même sujet."
+          },
+          high: {
+            message: "Le contexte est riche et ancré : l'IA peut construire une réponse adaptée à ta situation précise.",
+            conseil: "Parfait. Si tu as des données chiffrées (budget, volumes, délais), les ajouter élimine les dernières suppositions.",
+            impact: "Un contexte précis réduit les hallucinations et supprime les demandes de clarification — la réponse est juste du premier coup."
+          }
+        },
+
+        examples: [
+          {
+            label: "Plan de formation",
+            avant: "Crée un plan de formation sur Excel.",
+            apres: "Notre équipe comptabilité (8 personnes, niveau débutant-intermédiaire sur Excel) doit maîtriser les tableaux croisés dynamiques pour les clôtures mensuelles. Nous avons 2 demi-journées disponibles en mars. Crée un plan de formation progressif.",
+            delta: "Le contexte chiffré (8 personnes, 2 demi-journées, objectif TCD) force un plan réaliste et calibré — pas un plan théorique de 5 jours impossible à tenir."
+          },
+          {
+            label: "Diagnostic commercial",
+            avant: "Aide-moi à comprendre pourquoi mes ventes baissent.",
+            apres: "Je suis directeur commercial d'une PME B2B SaaS (CA 2,3M€, 6 commerciaux). Depuis Q4 2024, le taux de conversion démos → contrats signés est passé de 35% à 18%. L'équipe et le produit sont stables. Aide-moi à identifier les causes les plus probables.",
+            delta: "Le chiffre précis (35% → 18%) transforme l'analyse vague en diagnostic différentiel ciblé — l'IA sait exactement ce qui a changé et peut raisonner sur les causes."
+          },
+          {
+            label: "Communication post-fusion",
+            avant: "Écris un message pour annoncer un changement organisationnel.",
+            apres: "Notre PME vient de fusionner avec le groupe X (annoncé il y a 3 semaines). Les équipes support (RH, Finance) sont anxieuses sur l'évolution de leurs postes. Nous devons annoncer lundi la nouvelle organisation. Rédige un message de direction rassurant et factuel.",
+            delta: "Le contexte émotionnel (anxiété post-fusion) oriente le ton : rassurant d'abord, factuel ensuite — l'IA sans ce contexte aurait écrit un communiqué froid."
+          }
+        ]
+      },
+
+      {
+        id: 'd4', label: 'Limites', icon: '🔒',
+
+        detect(text) {
+          // Exclusions explicites (ce qu'on ne veut PAS)
+          const exclusions = [
+            /ne (pas|jamais)\s+(utiliser?|inclure?|mentionner?|faire?|mettre?|ajouter?)/i,
+            /sans (jargon|abréviations?|anglicismes?|emojis?|chiffres?|introduction|conclusion|bullet)/i,
+            /évite[rz]?\b/i,
+            /exclure?\b/i,
+            /pas de\s+\w+/i,
+            /aucun(e)?\s+\w+/i,
+            /interdit|hors scope|ne pas mentionner/i
+          ];
+          const exclCount = exclusions.filter(p => p.test(text)).length;
+
+          // Contraintes de format / longueur
+          const formatLimits = [
+            /\b(tableau|liste|bullet|email|rapport|fiche|checklist|FAQ|plan|post|article)\b/i,
+            /\b\d+\s*(mots?|lignes?|pages?|paragraphes?|slides?|caractères?)\b/i,
+            /maximum|minimum|au plus|au moins|exactement\s+\d/i,
+            /\bcourt\b|\bconcis\b|\bbref\b/i,
+            /format\s*:/i,
+            /sous forme de/i,
+            /en\s+\d+\s*(points?|bullets?|étapes?)/i
+          ];
+          const formatCount = formatLimits.filter(p => p.test(text)).length;
+
+          // Contraintes de ton / audience
+          const toneAudience = [
+            /\bton\s*:/i,
+            /\bstyle\s*:/i,
+            /\b(formel|informel|professionnel|décontracté|bienveillant|neutre|direct|chaleureux|factuel|pédagogique)\b/i,
+            /vouvoyer|tutoyer/i,
+            /pour (des?|un|une) (non-technicien|débutant|expert|manager|direction|junior|senior|grand public)/i,
+            /accessible (à|pour)|compréhensible (par|pour)/i,
+            /niveau\s*(débutant|intermédiaire|expert|avancé)/i,
+            /pas (trop )?(technique|long|formel|complexe|académique)/i
+          ];
+          const toneCount = toneAudience.filter(p => p.test(text)).length;
+
+          return { exclCount, formatCount, toneCount };
+        },
+
+        score(text) {
+          const { exclCount, formatCount, toneCount } = this.detect(text);
+          let s = 0;
+          if (exclCount >= 2)   s += 10;
+          else if (exclCount)   s += 5;
+          if (formatCount >= 2) s += 10;
+          else if (formatCount) s += 5;
+          if (toneCount >= 1)   s += 5;
+          return Math.min(25, s);
+        },
+
+        feedback: {
+          low: {
+            message: "Aucune limite définie. L'IA fait des choix par défaut — format, ton, longueur — qui correspondent rarement à ton besoin précis.",
+            conseil: "Définis au moins 2 limites : un format de sortie ET une contrainte d'exclusion (ce que tu ne veux pas).",
+            impact: "Sans limites : prose de 400 mots avec jargon technique. Avec « 5 bullets, sans anglicismes, ton accessible » : livrable utilisable immédiatement."
+          },
+          mid: {
+            message: "Des limites sont posées mais elles sont insuffisantes pour éliminer les dérives les plus fréquentes.",
+            conseil: "Ajoute des exclusions explicites (« sans emojis », « pas de jargon », « évite les généralités ») et précise le format structurel.",
+            impact: "Chaque limite que tu ajoutes élimine une catégorie entière d'erreurs — c'est le moyen le plus rentable d'améliorer la qualité."
+          },
+          high: {
+            message: "Les limites sont complètes : format, ton, exclusions et audience sont définis — le livrable est prévisible.",
+            conseil: "Tu peux aller encore plus loin avec un exemple de style attendu entre guillemets (few-shot) — c'est le niveau expert.",
+            impact: "Des limites précises réduisent drastiquement le temps de révision post-génération — souvent zéro retouche nécessaire."
+          }
+        },
+
+        examples: [
+          {
+            label: "Email de relance",
+            avant: "Rédige un email pour relancer un prospect.",
+            apres: "Rédige un email de relance commerciale. Format : objet (max 60 caractères) + corps de 80 mots max. Ton : chaleureux et professionnel, pas commercial-agressif. Exclusions : pas d'emojis, pas de formules standardisées type « j'espère que ce message vous trouve bien ». Destinataire : directeur de PME, 50 ans.",
+            delta: "Les 3 limites (format + ton + exclusions) + l'audience produisent un email envoyable sans aucune retouche — sans elles, l'IA écrit un email générique de 200 mots avec 3 emojis."
+          },
+          {
+            label: "Vulgarisation technique",
+            avant: "Explique le machine learning.",
+            apres: "Explique le machine learning à des managers non-techniques. Limites : pas de formules mathématiques, pas d'anglicismes sans traduction immédiate, exemples uniquement du monde des affaires (jamais du monde scientifique). Longueur : 150 mots maximum.",
+            delta: "Les 3 exclusions (maths, anglicismes, exemples sci.) forcent une vulgarisation vraiment accessible — sans elles, l'IA utilise neurones artificiels, algorithmes, datasets."
+          },
+          {
+            label: "Rapport pour direction",
+            avant: "Fais-moi un rapport sur nos résultats.",
+            apres: "Produis un rapport de synthèse en 4 sections : Résumé exécutif (5 lignes max), Analyse (tableau comparatif), Risques (3 bullets max), Recommandations (2 actions avec responsable). Format : lisible par un non-technicien. Pas de graphiques (support texte uniquement). Maximum 1 page A4.",
+            delta: "La contrainte « 1 page A4 » + « lisible par un non-technicien » + la structure en 4 sections produit un rapport prêt à imprimer — sans limites, l'IA produit 5 pages de prose dense."
+          }
+        ]
+      }
+    ];
+
+    const CONTEXTS = [
+      {
+        id: 'email', label: 'Email / Communication', icon: '✉️',
+        desc: 'Rédiger, répondre ou reformuler un email professionnel',
+        hint: 'Précise à qui tu écris, quel est l\'objectif, et le ton souhaité.',
+        // R    O    C    L
+        weights: { d1: 1.0, d2: 1.3, d3: 1.2, d4: 1.5 }
+      },
+      {
+        id: 'analyse', label: 'Analyse / Rapport', icon: '📊',
+        desc: 'Analyser des données, rédiger un rapport, identifier des tendances',
+        hint: 'Précise le périmètre de l\'analyse, les données disponibles, et le public cible.',
+        weights: { d1: 1.2, d2: 1.5, d3: 1.5, d4: 1.0 }
+      },
+      {
+        id: 'redaction', label: 'Rédaction de contenu', icon: '✍️',
+        desc: 'Articles, posts, présentations, supports de formation',
+        hint: 'Indique le canal de diffusion, l\'audience, et les mots-clés importants.',
+        weights: { d1: 1.2, d2: 1.2, d3: 1.1, d4: 1.5 }
+      },
+      {
+        id: 'formation', label: 'Pédagogie / Formation', icon: '🎓',
+        desc: 'Créer des exercices, plans de cours, quiz, supports pédagogiques',
+        hint: 'Précise le niveau des apprenants, les objectifs pédagogiques, et la durée.',
+        weights: { d1: 1.5, d2: 1.3, d3: 1.2, d4: 1.2 }
+      },
+      {
+        id: 'resume', label: 'Résumé / Synthèse', icon: '📋',
+        desc: 'Résumer un document, synthétiser une réunion, extraire l\'essentiel',
+        hint: 'Précise la longueur souhaitée, le format de sortie, et à qui est destiné le résumé.',
+        weights: { d1: 0.8, d2: 1.5, d3: 1.3, d4: 1.5 }
+      },
+      {
+        id: 'creation', label: 'Création / Brainstorm', icon: '💡',
+        desc: 'Générer des idées, créer des variantes, débloquer la créativité',
+        hint: 'Précise les contraintes créatives, l\'audience cible, et les idées à exclure.',
+        weights: { d1: 1.2, d2: 1.1, d3: 1.0, d4: 1.5 }
+      }
+    ];
+
+    /* ═══════════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════════ */
+
+    const STATE = {
+      sessionId: null,
+      attemptCount: 0,
+      bestScore: 0,
+      context: null,
+      currentPrompt: '',
+      scores: {},
+      totalScore: 0,
+      focusDimId: null,
+      previousPrompt: '',
+      previousScores: {},
+      previousTotal: 0,
+      dimensionHistory: [],
+
+      save() {
+        try {
+          sessionStorage.setItem('PromptCoach_v1', JSON.stringify({
+            sessionId: this.sessionId,
+            attemptCount: this.attemptCount,
+            bestScore: this.bestScore,
+            context: this.context,
+            dimensionHistory: this.dimensionHistory
+          }));
+        } catch(e) {}
+      },
+
+      load() {
+        try {
+          const raw = sessionStorage.getItem('PromptCoach_v1');
+          if (!raw) return false;
+          const s = JSON.parse(raw);
+          Object.assign(this, s);
+          return true;
+        } catch(e) { return false; }
+      }
+    };
+
+    /* ═══════════════════════════════════════════════
+       SCORER
+    ═══════════════════════════════════════════════ */
+
+    const SCORER = {
+      scoreAll(text) {
+        const out = {};
+        DIMENSIONS.forEach(d => { out[d.id] = d.score(text); });
+        return out;
+      },
+
+      computeTotal(scores, contextId) {
+        const ctx = CONTEXTS.find(c => c.id === contextId);
+        const w = ctx ? ctx.weights : { d1:1, d2:1, d3:1, d4:1 };
+        const totalW = Object.values(w).reduce((a,b) => a+b, 0);
+        const weighted = DIMENSIONS.reduce((acc, d) => acc + scores[d.id] * w[d.id], 0);
+        return Math.round((weighted / (20 * totalW)) * 100);
+      },
+
+      getLevel(total) {
+        if (total >= 80) return { label: 'Expert',        color: '#3E5641' };
+        if (total >= 60) return { label: 'Intermédiaire', color: '#5B753C' };
+        if (total >= 35) return { label: 'À améliorer',   color: '#906300' };
+        return                  { label: 'Insuffisant',   color: '#B03A2E' };
+      },
+
+      getBarClass(score) {
+        if (score >= 15) return 'high';
+        if (score >= 8)  return 'mid';
+        return 'low';
+      }
+    };
+
+    /* ═══════════════════════════════════════════════
+       SCAFFOLDER
+    ═══════════════════════════════════════════════ */
+
+    const SCAFFOLDER = {
+      getFocusDim(scores, contextId) {
+        const ctx = CONTEXTS.find(c => c.id === contextId);
+        const w = ctx ? ctx.weights : { d1:1, d2:1, d3:1, d4:1 };
+        const sorted = DIMENSIONS
+          .map(d => ({ d, ws: scores[d.id] * w[d.id] }))
+          .sort((a,b) => a.ws - b.ws);
+        return sorted[0].d;
+      },
+
+      getFeedbackLevel(score) {
+        if (score <= 10) return 'low';
+        if (score <= 15) return 'mid';
+        return 'high';
+      }
+    };
+
+    /* ═══════════════════════════════════════════════
+       UI HELPERS
+    ═══════════════════════════════════════════════ */
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    let toastTimer;
+    function showToast(msg, duration = 3000) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+    }
+
+    function countWords(text) {
+      return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+    }
+
+    function makeContextPill(contextId) {
+      const ctx = CONTEXTS.find(c => c.id === contextId);
+      if (!ctx) return '';
+      return `<span class="pill">${ctx.icon} ${ctx.label}</span>`;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RENDER FUNCTIONS
+    ═══════════════════════════════════════════════ */
+
+    function renderContextGrid() {
+      const grid = document.getElementById('contextGrid');
+      grid.innerHTML = CONTEXTS.map(c => `
+        <div class="context-card" data-id="${c.id}" onclick="App.selectContext('${c.id}')">
+          <div class="context-card-icon">${c.icon}</div>
+          <div class="context-card-label">${c.label}</div>
+          <div class="context-card-desc">${c.desc}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDimBars(scores, focusDimId) {
+      const container = document.getElementById('dimBarsContainer');
+      container.innerHTML = DIMENSIONS.map(d => {
+        const s = scores[d.id];
+        const pct = (s / 20) * 100;
+        const cls = SCORER.getBarClass(s);
+        const isFocus = d.id === focusDimId;
+        return `
+          <div class="dim-bar-row${isFocus ? ' focus-row' : ''}" id="bar-row-${d.id}">
+            <span class="dim-bar-icon">${d.icon}</span>
+            <span class="dim-bar-label">${d.label}</span>
+            <div class="dim-bar-track">
+              <div class="dim-bar-fill ${cls}" style="width:${pct}%"></div>
+            </div>
+            <span class="dim-bar-score">${s}/20</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFeedbackBlock(dim, scores) {
+      const score = scores[dim.id];
+      const level = SCAFFOLDER.getFeedbackLevel(score);
+      const fb = dim.feedback[level];
+
+      document.getElementById('feedbackBlock').innerHTML = `
+        <div class="feedback-block" id="feedback-block-inner">
+          <div class="fb-header">
+            <span class="fb-header-icon">${dim.icon}</span>
+            <span class="fb-header-label">Dimension à travailler : ${dim.label}</span>
+            <span class="fb-header-score">${score}/20</span>
+          </div>
+          <div class="fb-body">
+            <p class="fb-message">${fb.message}</p>
+            <div class="fb-conseil">
+              <div class="fb-conseil-label">💡 Conseil</div>
+              ${fb.conseil}
+            </div>
+            <p class="fb-impact">⚡ ${fb.impact}</p>
+            <div class="examples-title">Exemples avant / après</div>
+            ${dim.examples.map((ex, i) => `
+              <details class="example-item" ${i === 0 ? 'open' : ''}>
+                <summary>Exemple : ${ex.label}</summary>
+                <div class="example-avant">
+                  <div class="example-label-tag">Avant</div>
+                  ${ex.avant}
+                </div>
+                <div class="example-apres">
+                  <div class="example-label-tag">Après</div>
+                  ${ex.apres}
+                </div>
+                <div class="example-delta">${ex.delta}</div>
+              </details>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDimNav(scores, activeDimId) {
+      document.getElementById('dimNav').innerHTML = DIMENSIONS.map(d => `
+        <button
+          class="dim-nav-btn${d.id === activeDimId ? ' active' : ''}"
+          title="${d.label} (${scores[d.id]}/20)"
+          onclick="App.switchFocusDim('${d.id}')"
+        >${d.icon}</button>
+      `).join('');
+    }
+
+    function renderFeedbackScreen() {
+      const { totalScore, scores, context, previousTotal, attemptCount } = STATE;
+      const level = SCORER.getLevel(totalScore);
+      const focusDim = SCAFFOLDER.getFocusDim(scores, context);
+      STATE.focusDimId = focusDim.id;
+
+      // Score
+      document.getElementById('scoreNum').innerHTML =
+        `${totalScore}<span class="score-denom">/100</span>`;
+      const levelEl = document.getElementById('scoreLevel');
+      levelEl.textContent = level.label;
+      levelEl.style.background = level.color;
+      levelEl.style.color = '#FDFEF9';
+
+      // Delta
+      const deltaEl = document.getElementById('scoreDelta');
+      if (attemptCount >= 2 && previousTotal > 0) {
+        const delta = totalScore - previousTotal;
+        deltaEl.style.display = 'block';
+        if (delta > 0) {
+          deltaEl.textContent = `↑ +${delta} pts vs ta tentative précédente`;
+          deltaEl.className = 'score-delta';
+        } else if (delta < 0) {
+          deltaEl.textContent = `↓ ${delta} pts vs ta tentative précédente`;
+          deltaEl.className = 'score-delta neg';
+        } else {
+          deltaEl.textContent = 'Score identique à ta tentative précédente';
+          deltaEl.className = 'score-delta neg';
+        }
+      } else {
+        deltaEl.style.display = 'none';
+      }
+
+      // Context pill
+      document.getElementById('contextPillFeedback').innerHTML = makeContextPill(context);
+
+      // Dim bars + feedback block + nav
+      renderDimBars(scores, focusDim.id);
+      renderFeedbackBlock(focusDim, scores);
+      renderDimNav(scores, focusDim.id);
+
+      // Special messages
+      if (totalScore === 100) {
+        showToast('🏆 Prompt expert ! Essaie un contexte plus complexe.', 5000);
+      } else if (attemptCount >= 2 && totalScore === previousTotal) {
+        showToast(`Score identique. Relis le conseil sur « ${focusDim.label} ».`, 4000);
+      } else if (attemptCount >= 2 && totalScore < previousTotal) {
+        showToast('Certaines dimensions ont baissé — c\'est normal en phase d\'apprentissage. Continue !', 4000);
+      }
+    }
+
+    function renderLiveBadges(newScores, refScores) {
+      document.getElementById('liveBadges').innerHTML = DIMENSIONS.map(d => {
+        const improved = newScores[d.id] > refScores[d.id];
+        return `
+          <span class="live-badge${improved ? ' improved' : ''}">
+            ${d.icon} ${d.label}${improved ? ' ✓' : ''}
+          </span>
+        `;
+      }).join('');
+    }
+
+    function renderCompareScreen() {
+      const { totalScore, scores, previousTotal, previousScores, previousPrompt, currentPrompt } = STATE;
+      const delta = totalScore - previousTotal;
+
+      // Delta zone
+      const deltaNum = document.getElementById('compareDeltaNum');
+      deltaNum.textContent = (delta >= 0 ? '+' : '') + delta + ' pts';
+      deltaNum.className = 'compare-delta-num' + (delta < 0 ? ' neg' : '');
+
+      let msg = '';
+      if (delta >= 30)      msg = '🎉 Progression remarquable ! Tu as bien appliqué le conseil.';
+      else if (delta >= 15) msg = '👍 Belle amélioration ! Chaque itération te rapproche du niveau expert.';
+      else if (delta >= 1)  msg = '✅ Tu as progressé. Continue à affiner, dimension par dimension.';
+      else if (delta === 0) msg = '⚠️ Score identique. Relis le conseil prioritaire et applique-le explicitement.';
+      else                  msg = '💪 Score en baisse, mais c\'est un apprentissage. Concentre-toi sur UNE dimension à la fois.';
+      document.getElementById('compareDeltaMsg').textContent = msg;
+
+      // Compare grid
+      const grid = document.getElementById('compareGrid');
+      grid.innerHTML = [
+        { title: 'Tentative 1', prompt: previousPrompt, sc: previousScores, total: previousTotal, improved: false },
+        { title: 'Tentative 2', prompt: currentPrompt,  sc: scores,          total: totalScore,    improved: delta >= 0 }
+      ].map(card => `
+        <div class="compare-card${card.improved ? ' improved' : ''}">
+          <div class="compare-card-title">${card.title}</div>
+          <div class="compare-total-score">${card.total}<span style="font-size:1rem;font-weight:400;opacity:.5">/100</span></div>
+          ${DIMENSIONS.map(d => {
+            const s1 = previousScores[d.id] || 0;
+            const s2 = scores[d.id] || 0;
+            let cls = 'same';
+            if (card.title === 'Tentative 2') {
+              if (s2 > s1) cls = 'up';
+              else if (s2 < s1) cls = 'down';
+            }
+            return `
+              <div class="compare-dim-row">
+                <span class="compare-dim-icon-label">${d.icon} ${d.label}</span>
+                <span class="compare-dim-score ${cls}">${card.sc[d.id]}/20${cls === 'up' ? ' ↑' : cls === 'down' ? ' ↓' : ''}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `).join('');
+    }
+
+    function updateSessionUI() {
+      const { attemptCount, bestScore, dimensionHistory } = STATE;
+      const progressEl = document.getElementById('sessionProgress');
+      const fillEl = document.getElementById('progressFill');
+      const bestEl = document.getElementById('sessionBest');
+      const dotsEl = document.getElementById('sessionDots');
+
+      fillEl.style.width = bestScore + '%';
+
+      if (attemptCount > 0) {
+        progressEl.classList.add('visible');
+        bestEl.textContent = 'Meilleur : ' + bestScore + '/100';
+        dotsEl.innerHTML = dimensionHistory.slice(-8).map(h => {
+          const cls = h.total >= 60 ? 'good' : h.total >= 35 ? 'mid' : 'low';
+          return `<span class="session-dot ${cls}" title="${h.total}/100"></span>`;
+        }).join('');
+      }
+    }
+
+    function showSessionBanner() {
+      const banner = document.getElementById('sessionBanner');
+      const txt = document.getElementById('sessionBannerText');
+      if (STATE.attemptCount > 0) {
+        txt.innerHTML = `Session en cours — <strong>tentative ${STATE.attemptCount}</strong> — meilleur score : <strong>${STATE.bestScore}/100</strong>`;
+        banner.classList.add('visible');
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       CORE LOGIC
+    ═══════════════════════════════════════════════ */
+
+    function runAnalysis(promptText, isV2) {
+      const scores = SCORER.scoreAll(promptText);
+      const total  = SCORER.computeTotal(scores, STATE.context);
+
+      if (isV2) {
+        STATE.previousPrompt  = STATE.currentPrompt;
+        STATE.previousScores  = { ...STATE.scores };
+        STATE.previousTotal   = STATE.totalScore;
+      }
+
+      STATE.currentPrompt = promptText;
+      STATE.scores        = scores;
+      STATE.totalScore    = total;
+      STATE.attemptCount++;
+      if (total > STATE.bestScore) STATE.bestScore = total;
+
+      STATE.dimensionHistory.push({
+        attempt: STATE.attemptCount,
+        scores: { ...scores },
+        total,
+        context: STATE.context
+      });
+      STATE.save();
+
+      updateSessionUI();
+    }
+
+    /* ═══════════════════════════════════════════════
+       PUBLIC APP API
+    ═══════════════════════════════════════════════ */
+
+    const App = {
+      selectContext(id) {
+        STATE.context = id;
+        document.querySelectorAll('.context-card').forEach(c => {
+          c.classList.toggle('selected', c.dataset.id === id);
+        });
+        document.getElementById('btnToInput').disabled = false;
+      },
+
+      switchFocusDim(dimId) {
+        STATE.focusDimId = dimId;
+        const dim = DIMENSIONS.find(d => d.id === dimId);
+        renderFeedbackBlock(dim, STATE.scores);
+        renderDimNav(STATE.scores, dimId);
+        // Update focus highlight on bars
+        document.querySelectorAll('.dim-bar-row').forEach(r => r.classList.remove('focus-row'));
+        const row = document.getElementById('bar-row-' + dimId);
+        if (row) row.classList.add('focus-row');
+      }
+    };
+
+    window.App = App;
+
+    /* ═══════════════════════════════════════════════
+       EVENTS
+    ═══════════════════════════════════════════════ */
+
+    // Écran 1 → 2
+    document.getElementById('btnToInput').addEventListener('click', () => {
+      const ctx = CONTEXTS.find(c => c.id === STATE.context);
+      document.getElementById('contextPillInput').innerHTML = makeContextPill(STATE.context);
+      document.getElementById('contextHint').innerHTML =
+        `<strong>Conseil :</strong> ${ctx.hint}`;
+      document.getElementById('promptInput').value = '';
+      document.getElementById('wordCount').textContent = '0';
+      document.getElementById('btnAnalyze').disabled = true;
+      showScreen('sc-input');
+      setTimeout(() => document.getElementById('promptInput').focus(), 300);
+    });
+
+    // Back context
+    document.getElementById('btnBackContext').addEventListener('click', () => {
+      showScreen('sc-context');
+    });
+
+    // Word count V1
+    document.getElementById('promptInput').addEventListener('input', function() {
+      const w = countWords(this.value);
+      document.getElementById('wordCount').textContent = w;
+      document.getElementById('btnAnalyze').disabled = (w < 1);
+    });
+
+    // Analyze V1
+    document.getElementById('btnAnalyze').addEventListener('click', () => {
+      const text = document.getElementById('promptInput').value.trim();
+      if (countWords(text) < 6) {
+        showToast('Ton prompt est trop court pour être analysé. Ajoute au moins 6 mots.', 3500);
+        return;
+      }
+      runAnalysis(text, false);
+      renderFeedbackScreen();
+      showScreen('sc-feedback');
+    });
+
+    // Rewrite
+    document.getElementById('btnRewrite').addEventListener('click', () => {
+      const focusDim = DIMENSIONS.find(d => d.id === STATE.focusDimId);
+      const level = SCAFFOLDER.getFeedbackLevel(STATE.scores[STATE.focusDimId]);
+      document.getElementById('focusReminderText').textContent = focusDim.feedback[level].conseil;
+      document.getElementById('originalPromptDisplay').textContent = STATE.currentPrompt;
+      document.getElementById('rewriteInput').value = '';
+      document.getElementById('wordCountV2').textContent = '0';
+      document.getElementById('btnAnalyzeV2').disabled = true;
+      renderLiveBadges(STATE.scores, STATE.scores);
+      showScreen('sc-rewrite');
+      setTimeout(() => document.getElementById('rewriteInput').focus(), 300);
+    });
+
+    // Back to feedback
+    document.getElementById('btnBackFeedback').addEventListener('click', () => {
+      showScreen('sc-feedback');
+    });
+
+    // New prompt from feedback
+    document.getElementById('btnNewPrompt').addEventListener('click', () => {
+      document.getElementById('promptInput').value = '';
+      document.getElementById('wordCount').textContent = '0';
+      document.getElementById('btnAnalyze').disabled = true;
+      showScreen('sc-input');
+      setTimeout(() => document.getElementById('promptInput').focus(), 300);
+    });
+
+    // Live scoring V2 (debounce)
+    let liveTimer;
+    document.getElementById('rewriteInput').addEventListener('input', function() {
+      const w = countWords(this.value);
+      document.getElementById('wordCountV2').textContent = w;
+      document.getElementById('btnAnalyzeV2').disabled = (w < 1);
+      clearTimeout(liveTimer);
+      liveTimer = setTimeout(() => {
+        if (w >= 3) {
+          const liveScores = SCORER.scoreAll(this.value);
+          renderLiveBadges(liveScores, STATE.scores);
+        }
+      }, 500);
+    });
+
+    // Analyze V2
+    document.getElementById('btnAnalyzeV2').addEventListener('click', () => {
+      const text = document.getElementById('rewriteInput').value.trim();
+      if (countWords(text) < 6) {
+        showToast('Ton prompt est trop court pour être analysé. Ajoute au moins 6 mots.', 3500);
+        return;
+      }
+      runAnalysis(text, true);
+      renderCompareScreen();
+      showScreen('sc-compare');
+    });
+
+    // Compare actions
+    document.getElementById('btnImproveAgain').addEventListener('click', () => {
+      // V2 devient V1 pour la prochaine itération
+      renderFeedbackScreen();
+      document.getElementById('focusReminderText').textContent =
+        DIMENSIONS.find(d => d.id === STATE.focusDimId)
+          .feedback[SCAFFOLDER.getFeedbackLevel(STATE.scores[STATE.focusDimId])].conseil;
+      document.getElementById('originalPromptDisplay').textContent = STATE.currentPrompt;
+      document.getElementById('rewriteInput').value = '';
+      document.getElementById('wordCountV2').textContent = '0';
+      document.getElementById('btnAnalyzeV2').disabled = true;
+      renderLiveBadges(STATE.scores, STATE.scores);
+      showScreen('sc-rewrite');
+      setTimeout(() => document.getElementById('rewriteInput').focus(), 300);
+    });
+
+    document.getElementById('btnNewContext').addEventListener('click', () => {
+      showSessionBanner();
+      showScreen('sc-context');
+    });
+
+    document.getElementById('btnNewPromptSameCtx').addEventListener('click', () => {
+      document.getElementById('promptInput').value = '';
+      document.getElementById('wordCount').textContent = '0';
+      document.getElementById('btnAnalyze').disabled = true;
+      showScreen('sc-input');
+      setTimeout(() => document.getElementById('promptInput').focus(), 300);
+    });
+
+    /* ═══════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════════ */
+
+    (function init() {
+      const hasSession = STATE.load();
+      STATE.sessionId = STATE.sessionId || Date.now().toString();
+      STATE.save();
+
+      renderContextGrid();
+      updateSessionUI();
+
+      if (hasSession && STATE.attemptCount > 0) {
+        showSessionBanner();
+      }
+
+      showScreen('sc-context');
+    })();
+
+  })();
+  </script>
+</body>
+</html>
